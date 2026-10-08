@@ -13,10 +13,14 @@
 <body>
   <header>
     <a class="brand" href="/"><span>R</span> Reel Studio</a>
-    <div class="badge">Instagram 9:16</div>
+    <div class="header-actions"><div class="badge">Instagram 9:16</div><button id="manageClients" class="quiet-button">案件を管理</button></div>
   </header>
 
   <main>
+    <section class="workspace-bar">
+      <div><span class="workspace-label">CLIENT WORKSPACE</span><strong id="activeClientName">クライアント 1</strong></div>
+      <nav id="clientTabs" aria-label="顧客案件"></nav>
+    </section>
     <section class="intro">
       <p class="eyebrow">CREATE YOUR MOMENT</p>
       <h1>いつもの素材を、<br><em>惹きつけるリール</em>に。</h1>
@@ -53,6 +57,15 @@
       </aside>
     </section>
   </main>
+
+  <dialog id="clientDialog">
+    <form method="dialog" id="clientForm">
+      <div class="dialog-head"><div><span class="workspace-label">WORKSPACES</span><h2>顧客案件を管理</h2></div><button value="cancel" aria-label="閉じる">×</button></div>
+      <p>顧客ごとにブランド設定と制作履歴を分けて管理します。</p>
+      <div id="clientFields" class="client-fields"></div>
+      <button class="save-clients" value="default">変更を保存</button>
+    </form>
+  </dialog>
 
   <template id="mediaTemplate"><div class="media-item"><div class="thumb"></div><div class="meta"><strong></strong><span></span></div><button aria-label="削除">×</button></div></template>
   <script type="module" src="/app.js"></script>

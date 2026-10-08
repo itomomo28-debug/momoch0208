@@ -8,7 +8,56 @@ const durationValue = document.querySelector('#durationValue');
 const background = document.querySelector('#background');
 const status = document.querySelector('#status');
 const template = document.querySelector('#mediaTemplate');
+const clientTabs = document.querySelector('#clientTabs');
+const activeClientName = document.querySelector('#activeClientName');
+const clientDialog = document.querySelector('#clientDialog');
+const clientFields = document.querySelector('#clientFields');
 let files = [];
+let clients = JSON.parse(localStorage.getItem('reel-studio-clients') || 'null') || [
+  { id: crypto.randomUUID(), name: 'クライアント 1', background: '#101014' },
+  { id: crypto.randomUUID(), name: 'クライアント 2', background: '#101014' },
+  { id: crypto.randomUUID(), name: 'クライアント 3', background: '#101014' },
+  { id: crypto.randomUUID(), name: 'クライアント 4', background: '#101014' }
+];
+let activeClient = localStorage.getItem('reel-studio-active-client') || clients[0].id;
+
+function saveClients() { localStorage.setItem('reel-studio-clients', JSON.stringify(clients)); }
+function selectClient(id) {
+  const client = clients.find(item => item.id === id) || clients[0];
+  activeClient = client.id;
+  localStorage.setItem('reel-studio-active-client', activeClient);
+  activeClientName.textContent = client.name;
+  background.value = client.background;
+  preview.style.background = client.background;
+  files = [];
+  status.textContent = '';
+  refresh();
+  renderClients();
+}
+function renderClients() {
+  clientTabs.replaceChildren();
+  clients.forEach((client, index) => {
+    const button = document.createElement('button');
+    button.textContent = client.name || `案件 ${index + 1}`;
+    button.classList.toggle('active', client.id === activeClient);
+    button.onclick = () => selectClient(client.id);
+    clientTabs.append(button);
+  });
+}
+function openClientManager() {
+  clientFields.replaceChildren();
+  clients.forEach((client, index) => {
+    const label = document.createElement('label');
+    label.textContent = `案件 ${index + 1}`;
+    const field = document.createElement('input');
+    field.value = client.name;
+    field.maxLength = 40;
+    field.dataset.clientId = client.id;
+    label.append(field);
+    clientFields.append(label);
+  });
+  clientDialog.showModal();
+}
 
 function formatSize(bytes) { return `${(bytes / 1024 / 1024).toFixed(1)} MB`; }
 function refresh() {
@@ -44,7 +93,22 @@ for (const name of ['dragenter','dragover']) dropzone.addEventListener(name, eve
 for (const name of ['dragleave','drop']) dropzone.addEventListener(name, event => { event.preventDefault(); dropzone.classList.remove('dragging'); });
 dropzone.addEventListener('drop', event => addFiles(event.dataTransfer.files));
 duration.addEventListener('input', () => { durationValue.textContent = `${duration.value}秒`; });
-background.addEventListener('input', () => { preview.style.background = background.value; });
+background.addEventListener('input', () => {
+  preview.style.background = background.value;
+  const client = clients.find(item => item.id === activeClient);
+  if (client) { client.background = background.value; saveClients(); }
+});
+document.querySelector('#manageClients').addEventListener('click', openClientManager);
+document.querySelector('#clientForm').addEventListener('submit', event => {
+  event.preventDefault();
+  clientFields.querySelectorAll('input').forEach(field => {
+    const client = clients.find(item => item.id === field.dataset.clientId);
+    if (client) client.name = field.value.trim() || client.name;
+  });
+  saveClients();
+  clientDialog.close();
+  selectClient(activeClient);
+});
 
 renderButton.addEventListener('click', async () => {
   renderButton.disabled = true; status.textContent = '高画質リールを書き出しています…';
@@ -58,3 +122,6 @@ renderButton.addEventListener('click', async () => {
   } catch (error) { status.textContent = error.message || '書き出しに失敗しました。'; }
   finally { renderButton.disabled = !files.length; }
 });
+
+saveClients();
+selectClient(activeClient);
