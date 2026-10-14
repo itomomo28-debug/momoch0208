@@ -14,11 +14,13 @@ const clientDialog = document.querySelector('#clientDialog');
 const clientFields = document.querySelector('#clientFields');
 let files = [];
 let clients = JSON.parse(localStorage.getItem('reel-studio-clients') || 'null') || [
-  { id: crypto.randomUUID(), name: 'クライアント 1', background: '#101014' },
+  { id: crypto.randomUUID(), name: 'ペシェ子様 リトリートアカウント運用', background: '#101014' },
   { id: crypto.randomUUID(), name: 'クライアント 2', background: '#101014' },
   { id: crypto.randomUUID(), name: 'クライアント 3', background: '#101014' },
   { id: crypto.randomUUID(), name: 'クライアント 4', background: '#101014' }
 ];
+// 既存ブラウザで未変更のまま残っている「クライアント 1」も案件名に置き換える
+if (clients[0].name === 'クライアント 1') clients[0].name = 'ペシェ子様 リトリートアカウント運用';
 let activeClient = localStorage.getItem('reel-studio-active-client') || clients[0].id;
 
 function saveClients() { localStorage.setItem('reel-studio-clients', JSON.stringify(clients)); }
