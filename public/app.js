@@ -14,7 +14,7 @@ const clientDialog = document.querySelector('#clientDialog');
 const clientFields = document.querySelector('#clientFields');
 let files = [];
 let clients = JSON.parse(localStorage.getItem('reel-studio-clients') || 'null') || [
-  { id: crypto.randomUUID(), name: 'クライアント 1', background: '#101014' },
+  { id: crypto.randomUUID(), name: 'シナリー所長昇格', background: '#101014' },
   { id: crypto.randomUUID(), name: 'クライアント 2', background: '#101014' },
   { id: crypto.randomUUID(), name: 'クライアント 3', background: '#101014' },
   { id: crypto.randomUUID(), name: 'クライアント 4', background: '#101014' }
