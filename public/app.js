@@ -19,6 +19,12 @@ let clients = JSON.parse(localStorage.getItem('reel-studio-clients') || 'null') 
   { id: crypto.randomUUID(), name: 'クライアント 3', background: '#101014' },
   { id: crypto.randomUUID(), name: 'クライアント 4', background: '#101014' }
 ];
+const presetClients = [
+  { preset: 'shibukawa', name: '渋川市 PR提案', background: '#1f3a2e' }
+];
+presetClients.forEach(preset => {
+  if (!clients.some(client => client.preset === preset.preset)) clients.push({ id: crypto.randomUUID(), ...preset });
+});
 let activeClient = localStorage.getItem('reel-studio-active-client') || clients[0].id;
 
 function saveClients() { localStorage.setItem('reel-studio-clients', JSON.stringify(clients)); }
