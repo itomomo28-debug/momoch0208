@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
-"""Lark (larksuite.com) Drive へ動画を分割アップロードするスクリプト。
+"""Lark (larksuite.com) Drive へ Zoom 録画を分割アップロードするスクリプト。
 
-使い方:
-  python3 lark_upload.py --check   # 認証とアップロード先フォルダを確認（アップロードしない）
-  python3 lark_upload.py --test    # 一番小さいファイルを1本だけアップロード
-  python3 lark_upload.py           # 未アップロードの残りを全部アップロード
-
-設定は同じフォルダの config.json に書く（config.example.json をコピーして作成）。
+upload_mac.command（Mac）か upload_windows.bat（Windows）をダブルクリックして起動する。
+初回だけ App ID / App Secret を聞かれ、config.json に保存される。
+初回はまず一番小さい1本をテストし、確認後に残りをアップロードする。
 アップロード済みのファイルは uploaded.json に記録され、再実行時はスキップされる。
 """
 import argparse
@@ -25,19 +22,31 @@ CONFIG_PATH = HERE / "config.json"
 STATE_PATH = HERE / "uploaded.json"
 VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".mkv", ".avi", ".m4a", ".webm"}
 MAX_RETRIES = 5
+DEFAULT_FOLDER_TOKEN = "DiM5fNFH5l3KJgdWjyJjGYG5prb"
+DEFAULT_SOURCE_DIR = "~/Downloads/Zoom録画_Lark用"
 
 
 class LarkError(Exception):
     pass
 
 
+def ask(prompt):
+    value = input(prompt).strip()
+    while not value:
+        value = input("  空欄です。もう一度入力してください: ").strip()
+    return value
+
+
 def load_config():
-    if not CONFIG_PATH.exists():
-        sys.exit(f"config.json がありません。config.example.json をコピーして {CONFIG_PATH} を作成してください。")
-    cfg = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-    for key in ("app_id", "app_secret", "folder_token", "source_dir"):
-        if not cfg.get(key) or "ここに" in cfg[key] or "xxxx" in cfg[key] or "トークン" in cfg[key]:
-            sys.exit(f"config.json の \"{key}\" を入力してください。")
+    cfg = json.loads(CONFIG_PATH.read_text(encoding="utf-8")) if CONFIG_PATH.exists() else {}
+    if not cfg.get("app_id") or not cfg.get("app_secret"):
+        print("最初の1回だけ、Lark アプリの情報を入力します（貼り付けて Enter）。")
+        cfg["app_id"] = ask("  App ID: ")
+        cfg["app_secret"] = ask("  App Secret: ")
+        CONFIG_PATH.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+        print("  保存しました。次回からは入力不要です。\n")
+    cfg.setdefault("folder_token", DEFAULT_FOLDER_TOKEN)
+    cfg.setdefault("source_dir", DEFAULT_SOURCE_DIR)
     return cfg
 
 
@@ -150,16 +159,31 @@ class Client:
 def list_videos(source_dir):
     d = Path(source_dir).expanduser()
     if not d.is_dir():
-        sys.exit(f"フォルダが見つかりません: {d}")
+        sys.exit(f"動画のフォルダが見つかりません: {d}\n"
+                 "「ダウンロード」の中に「Zoom録画_Lark用」フォルダがあるか確認してください。")
     return sorted(p for p in d.iterdir()
                   if p.is_file() and not p.name.startswith(".") and p.suffix.lower() in VIDEO_EXTS)
 
 
+def upload_all(client, cfg, state, files):
+    failed = []
+    for i, path in enumerate(files, 1):
+        print(f"[{i}/{len(files)}] {path.name} ({path.stat().st_size / 1024**2:,.0f} MB)")
+        try:
+            file_token = client.upload_file(path, cfg["folder_token"])
+        except Exception as e:
+            print(f"    ✗ 失敗: {e}")
+            failed.append(path.name)
+            continue
+        state[path.name] = file_token
+        save_state(state)
+        print("    ✓ 完了")
+    return failed
+
+
 def main():
     ap = argparse.ArgumentParser(description="Lark Drive へ動画を分割アップロード")
-    mode = ap.add_mutually_exclusive_group()
-    mode.add_argument("--check", action="store_true", help="認証とフォルダの確認のみ")
-    mode.add_argument("--test", action="store_true", help="一番小さいファイルを1本だけアップロード")
+    ap.add_argument("--check", action="store_true", help="認証とフォルダの確認のみ")
     args = ap.parse_args()
 
     cfg = load_config()
@@ -169,39 +193,50 @@ def main():
     pending = [p for p in videos if p.name not in state]
     total_gb = sum(p.stat().st_size for p in videos) / 1024**3
 
-    print(f"ローカル: {len(videos)}本 / {total_gb:.1f} GB（アップロード済み {len(videos) - len(pending)}本）")
+    print(f"動画: {len(videos)}本 / {total_gb:.1f} GB（アップロード済み {len(videos) - len(pending)}本）")
     try:
-        print(f"アップロード先フォルダ: 「{client.folder_name(cfg['folder_token'])}」")
+        print(f"アップロード先: Lark の「{client.folder_name(cfg['folder_token'])}」フォルダ\n")
     except (LarkError, urllib.error.URLError) as e:
-        sys.exit(f"認証またはフォルダへのアクセスに失敗しました: {e}\n"
-                 "App ID/Secret、アプリの権限、フォルダをアプリに共有しているかを確認してください。")
+        if "app" in str(e).lower() or "secret" in str(e).lower() or "10003" in str(e) or "10014" in str(e):
+            CONFIG_PATH.unlink(missing_ok=True)
+            sys.exit(f"Lark へのログインに失敗しました（{e}）。\n"
+                     "App ID か App Secret が違うようです。もう一度起動すると入力し直せます。")
+        sys.exit(f"Lark のフォルダに入れませんでした（{e}）。\n"
+                 "フォルダにアプリを追加したか、アプリに権限を付けて公開したかを確認してください。")
 
     if args.check:
-        print("認証とフォルダへのアクセスはOKです。")
+        print("接続OKです。")
         return
-    if args.test:
-        pending = sorted(pending, key=lambda p: p.stat().st_size)[:1]
+    if not pending:
+        print("すべてアップロード済みです。")
+        return
 
-    failed = []
-    for i, path in enumerate(pending, 1):
-        print(f"[{i}/{len(pending)}] {path.name} ({path.stat().st_size / 1024**2:,.0f} MB)")
-        try:
-            file_token = client.upload_file(path, cfg["folder_token"])
-        except Exception as e:
-            print(f"    ✗ 失敗: {e}")
-            failed.append(path.name)
-            continue
-        state[path.name] = file_token
-        save_state(state)
-        print(f"    ✓ 完了 file_token={file_token}")
+    if not state:
+        # 初回はまず一番小さい1本だけ試す
+        test = min(pending, key=lambda p: p.stat().st_size)
+        print("まずテストとして1本だけアップロードします。")
+        if upload_all(client, cfg, state, [test]):
+            sys.exit("\nテストのアップロードに失敗しました。上のエラーをそのまま Claude に貼ってください。")
+        pending.remove(test)
+        print("\nテスト成功！ Lark のフォルダにその動画があり、再生できるか確認してください。")
+        if not pending:
+            return
+        input(f"確認できたら Enter を押してください。残り{len(pending)}本のアップロードを始めます（やめる場合はウィンドウを閉じる）: ")
+        print()
 
+    failed = upload_all(client, cfg, state, pending)
     print(f"\n完了: {len(pending) - len(failed)}本 / 失敗: {len(failed)}本")
     for name in failed:
         print(f"  - {name}")
     if failed:
-        print("もう一度同じコマンドを実行すると、失敗した分だけ再アップロードします。")
+        print("もう一度起動すると、失敗した分だけアップロードし直します。")
         sys.exit(1)
+    print("すべてのアップロードが終わりました。")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        if sys.stdin.isatty():
+            input("\nEnter を押すとこのウィンドウを閉じます。")

@@ -1,23 +1,29 @@
-# Lark Drive 動画アップローダー
+# Zoom録画を Lark にアップロードする
 
-`~/Downloads/Zoom録画_Lark用` の動画を、Lark（larksuite.com）ドライブに分割アップロード（upload_prepare / upload_part / upload_finish）します。Python 3.8 以降で動き、追加パッケージは不要です。
+`ダウンロード/Zoom録画_Lark用` の動画を、Lark の指定フォルダへまとめてアップロードします。
+アップロード先フォルダは設定済みです。
 
-## 準備
+## 1. Lark アプリを用意する（最初の1回だけ）
 
-1. [Lark Developer Console](https://open.larksuite.com/app) でカスタムアプリを作り、権限 `drive:drive`（または `drive:file:upload`）を追加してアプリを公開します。
-2. Lark ドライブでアップロード先フォルダを開き、「共有」または「…」→「ドキュメントアプリを追加」からアプリに**編集権限**を付けます。
-3. `config.example.json` をコピーして `config.json` を作り、次の項目を入力します。
-   - `app_id` / `app_secret`：開発者コンソールの「認証情報と基本情報」に表示されている値
-   - `folder_token`：フォルダ URL `https://xxx.larksuite.com/drive/folder/XXXX` の `XXXX` の部分
+1. https://open.larksuite.com/app を開き、「カスタムアプリを作成」でアプリを作る（名前は「動画アップロード」など自由）
+2. 左メニュー「権限管理」で `drive:drive` を検索して追加する
+3. 左メニュー「バージョン管理と公開」でバージョンを作成し、公開する
+4. 左メニュー「認証情報と基本情報」に出ている **App ID** と **App Secret** を控えておく
+5. Lark ドライブでアップロード先フォルダを開き、右上「…」→「ドキュメントアプリを追加」から、作ったアプリを追加する
 
-`config.json` と `uploaded.json` は git の管理対象から外してあります。
+## 2. 起動する
 
-## 実行
+- **Mac**：`upload_mac.command` をダブルクリック
+  （「開けません」と出たら、右クリック →「開く」→「開く」）
+- **Windows**：`upload_windows.bat` をダブルクリック
 
-```bash
-python3 lark_upload.py --check   # 認証とフォルダ名の確認だけ（アップロードしない）
-python3 lark_upload.py --test    # 一番小さい1本だけアップロード
-python3 lark_upload.py           # 残りを全部アップロード
-```
+最初だけ App ID と App Secret を聞かれるので、貼り付けて Enter を押します。
 
-アップロードが済んだファイルは `uploaded.json` に記録され、再実行するとスキップされます。途中で止まったり失敗したりしても、同じコマンドを実行し直せば続きから進みます。
+## 3. あとは画面の案内どおりに
+
+1. まずテストとして1本だけアップロードされます
+2. Lark のフォルダでその動画が再生できるか確認し、Enter を押します
+3. 残りの動画がアップロードされます（合計約26GB なので数時間かかります。その間 PC をスリープさせないでください）
+
+途中で止まっても、もう一度ダブルクリックすれば続きから再開します。
+エラーが出たら、画面の文字をそのまま Claude に貼ってください。
