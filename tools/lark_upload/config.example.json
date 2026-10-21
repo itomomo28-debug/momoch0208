@@ -1,0 +1,6 @@
+{
+  "app_id": "cli_xxxxxxxxxxxxxxxx",
+  "app_secret": "ここにApp Secretを貼り付け",
+  "folder_token": "アップロード先フォルダのトークン（フォルダURLの /folder/ の後ろの文字列）",
+  "source_dir": "~/Downloads/Zoom録画_Lark用"
+}
